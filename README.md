@@ -109,8 +109,6 @@ Credentials are stored in `.claude/settings.json` env section — never committe
 
 ```
 zenflow/
-├── .claude-plugin/
-│   └── plugin.json                 # Plugin manifest
 ├── skills/
 │   ├── zen-setup/                  # One-time setup wizard (user-facing)
 │   ├── diffusion-planner/          # Pass-based planning methodology

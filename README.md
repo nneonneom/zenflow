@@ -2,17 +2,13 @@
 
 > *Master the ancient art of software cultivation. From epic to implementation, story to merge — each cycle refined, each release an ascension.*
 
-Zenflow is a Claude Code plugin that guides your full software development lifecycle — plan epics and break them into stories, generate structured implementation plans, automate code, review and resolve PR feedback, and sync everything back to Jira without leaving your terminal.
-
-Every ticket a lesson. Every merge a breakthrough.
+Zenflow eliminates the overhead that slows down the software development lifecycle. Developers, Product Owners, and Tech Leads spend too much time creating, coordinating, and tracking plans — writing epics, refining stories, documenting designs, chasing PR status — work that surrounds building software without being the building itself. Zenflow centralizes and automates that surrounding work: planning artifacts are generated and refined with minimal input, story state and dependencies are always visible, and the path from idea to merged code is shorter because the connective tissue between steps is handled, not managed.
 
 ---
 
 ## The Cultivation Path
 
 A cultivator does not rush. They refine.
-
-Most developers context-switch between tools, lose momentum between tickets, and carry the cognitive weight of process on top of the work itself. Zenflow removes that weight. Each stage of the lifecycle — from the first spark of a requirement to the final merge — flows into the next with intention and precision.
 
 ```
 Requirement → Epic → Story → Plan → Implementation → PR → Merge
@@ -24,41 +20,47 @@ Requirement → Epic → Story → Plan → Implementation → PR → Merge
 
 ## Capabilities
 
-### 🌱 Plan — Seed the Vision
-Zenflow's diffusion planner guides you from a blurry idea to a concrete architecture through deliberate passes — never detailing one corner before the full shape is confirmed.
+- Create epics and stories in Jira
+- Create feature branches in GitHub
+- Send direct notifications via Microsoft Teams
+- Generate epic plans from provided requirements
+- Generate technical design documents
+- Generate architecture diagrams (C4, Sequence, Flowchart, State Machine)
+- Generate story implementation plans
+- Trigger an epic lifecycle workflow (epic planning → technical design → story breakdown and prioritization)
+- Trigger a story implementation workflow (start story → generate plan → approve/refine → create branch → implement → test → create PR → address PR comments)
+- Approve and refine generated artifacts at any workflow stage before progression
+- Hand off a workflow stage to another team member
+- Pause a workflow and resume it later from any machine (`zen-pause`, `zen-resume`)
+- Manually trigger a PR check on demand (`zen-pr-check`)
+- Register a background PR monitor that periodically checks active PRs (`zen-pr-monitor`)
 
-- Define vision, scope, and module boundaries
-- Generate a prioritized journey backlog
-- Produce implementation-ready slice plans
-- Output a living `PLAN.md` that drives every subsequent session
+---
 
-### 📜 Cultivate — Forge Epics and Stories
-From your plan, Zenflow generates structured epics and stories ready for your team. No more blank Jira fields.
+## Core Journey — Story Implementation
 
-- Generate epics from vision and capability definitions
-- Break epics into well-scoped, dependency-ordered stories
-- Apply consistent acceptance criteria and Definition of Done
+1. Developer runs `zen-story` with optional story ID
+2. Fetches story from Jira, moves to In Progress, initializes state in `zenflow-state` repo
+3. Planning Core generates implementation plan with clarifying Q&A — user approves before proceeding
+4. Feature branch created: `zenflow/{story-id}-{concise-description}`
+5. Approved plan executed — Teams notification sent if mid-implementation input needed
+6. Quality checks and test suite run
+7. PR description generated from plan and story context — PR opened via `gh` CLI
+8. PR Monitor takes over: detects review comments and invokes `zen-story` to address them; sends Teams notification on approval
 
-### ⚔️ Implement — Strike With Precision
-Turn story plans into working code through guided, slice-by-slice implementation. Each slice independently testable. Each session context-aware.
+**Pause/Resume:** `zen-pause` writes current stage to state; `zen-resume {story-id}` fetches state and continues from last saved stage.
 
-- Generate implementation scaffolding from slice plans
-- Enforce module boundaries defined in planning
-- One slice at a time — no half-built foundations
+---
 
-### 🔍 Review — Discernment Before Ascension
-Zenflow reviews pull requests with the rigor of a seasoned senior. Not just style — architecture, boundary violations, test coverage, and edge cases.
+## Commands
 
-- Automated PR review with structured feedback
-- Implements approved feedback directly
-- Flags scope creep and design drift before it merges
-
-### 🗂 Track — The Ledger of Progress
-Jira integration via CLI keeps story status in sync with reality. No manual updates. No stale tickets.
-
-- Transition stories through lifecycle stages automatically
-- Add implementation notes and updates to tickets
-- Sync PR status, branch names, and completion back to epics
+| Command | Description |
+|---|---|
+| `zen-story` | Main orchestrator — start or continue a story workflow |
+| `zen-resume {story-id}` | Resume a paused workflow from any machine |
+| `zen-pause` | Pause the current workflow and save state |
+| `zen-pr-check {story-id}` | Manually trigger a PR status check |
+| `zen-pr-monitor` | Scheduled cron — polls active PRs, fires on review events |
 
 ---
 
@@ -75,24 +77,55 @@ claude plugin install ./zenflow
 
 ---
 
-## Quick Start
+## Setup
 
 ```bash
-# Plan a new project or feature
-/plan my-feature
-
-# Create epics and stories from your plan
-/cultivate
-
-# Generate implementation plan for the next story
-/implement
-
-# Review an open PR
-/review
-
-# Sync story status to Jira
-/track
+# Configure credentials and state repo
+/zen-setup
 ```
+
+Zenflow requires:
+- `ZENFLOW_STATE_REPO` — a GitHub repo used to persist workflow state across sessions and machines
+- Jira credentials (via `jira-cli` config)
+- GitHub credentials (via `gh auth login`)
+- Microsoft Teams webhook URL (for notifications)
+
+Credentials are stored in `.claude/settings.json` env section — never committed.
+
+---
+
+## Project Structure
+
+```
+zenflow/
+├── skills/
+│   ├── diffusion-planner/   # Pass-based planning methodology
+│   ├── commands/            # zen-story, zen-resume, zen-pause, zen-pr-check
+│   ├── planning-core/       # Plan, design doc, diagram, and PR description generation
+│   ├── state-store/         # zenflow-state repo reads/writes (state.json, plan.md)
+│   ├── jira-adapter/        # jira-cli + REST API fallback
+│   ├── gh-cli/              # GitHub branch, PR, and state repo operations
+│   ├── teams-adapter/       # Teams notifications and approval messages
+│   └── pr-monitor/          # Cron-triggered PR polling and event dispatch
+├── scripts/
+│   └── state.sh             # State store utilities (source in your shell)
+├── docs/
+│   └── plans/
+│       └── PLAN.md          # Full project plan and journey backlog
+├── CLAUDE.md                # Plugin context for Claude Code
+└── README.md
+```
+
+---
+
+## Out of Scope
+
+- CI/CD pipeline management (Zenflow triggers workflows, does not own pipelines)
+- Replacing Jira, GitHub, or Teams (Zenflow integrates with them, doesn't replicate them)
+- Test infrastructure ownership (Zenflow invokes tests; users own the suite)
+- UI/UX design or mockups
+- Sprint velocity, reporting, or analytics
+- Infrastructure or DevOps setup
 
 ---
 
@@ -108,26 +141,9 @@ Each command is a cycle. Each cycle is a refinement. Each release is an ascensio
 
 ---
 
-## Project Structure
-
-```
-zenflow/
-├── skills/
-│   ├── diffusion-planner/   # Pass-based planning methodology
-│   ├── cultivate/           # Epic and story generation
-│   ├── implement/           # Slice-by-slice implementation
-│   ├── review/              # PR review and feedback automation
-│   └── track/               # Jira CLI integration
-├── PLAN.md                  # Zenflow's own plan (dogfooded)
-├── CLAUDE.md                # Plugin context for Claude Code
-└── README.md
-```
-
----
-
 ## Status
 
-🌱 Early cultivation — active development.
+🌱 Early cultivation — active development. See [docs/plans/PLAN.md](docs/plans/PLAN.md) for the full journey backlog.
 
 ---
 

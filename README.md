@@ -11,7 +11,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 A cultivator does not rush. They refine.
 
 ```
-Requirement → Epic → Story → Plan → Implementation → PR → Merge
+Requirements → Epic → Story → Plan → Implementation → PR → Merge
                        ↑                    ↑               |
                        └── PR comments ─────┘               |
                        └──────────── Each release ──────────┘

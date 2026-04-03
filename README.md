@@ -12,8 +12,9 @@ A cultivator does not rush. They refine.
 
 ```
 Requirement → Epic → Story → Plan → Implementation → PR → Merge
-     ↑                                                        |
-     └──────────────── Each cycle refined ───────────────────┘
+                       ↑                    ↑               |
+                       └── PR comments ─────┘               |
+                       └──────────── Each release ──────────┘
 ```
 
 ---

@@ -100,6 +100,12 @@ user's perspective — without designing how.
 - What goes *in* and what comes *out*?
 - What is explicitly out of scope?
 
+**On out of scope**: Users often struggle to identify this themselves. If they
+ask for help, offer candidates based on what is adjacent but not core — things
+the system will touch but not own, or natural future extensions not needed now.
+Confirm each candidate with the user rather than declaring it out of scope
+unilaterally. Mark future-scope items with *(potential future scope)*.
+
 **Rules:**
 - Write capabilities as user-facing actions: "User can X"
 - No implementation language. "Fetches from Jira" is fine. "Calls Jira REST
@@ -124,7 +130,7 @@ scope feels right and complete.
 ### Pass 3 — Boundaries (The Architecture Skeleton)
 
 **Goal**: Assign every capability to a module/layer. Define what each part
-*owns* and what it *does not touch*. No capability should be "homeless."
+*owns* and what it *does not own*. No capability should be "homeless."
 
 **Steps:**
 1. Identify the major parts of the system (CLI layer, domain core, adapters,
@@ -135,10 +141,17 @@ scope feels right and complete.
 4. Flag any capability that doesn't fit cleanly — that's a design smell worth
    resolving now
 
+**Existing tools vs. custom modules**: For any external integration, ask
+whether a well-maintained CLI tool or SDK already covers the required
+operations before planning a custom module. If one exists, a thin wrapper is
+less code, better maintained, and already handles auth. Surface this tradeoff
+explicitly — the answer can collapse a module entirely.
+
 **Rules:**
 - Think in terms of *responsibility*, not implementation.
 - A module should be describable in one sentence: "X owns Y and knows nothing
   about Z."
+- Column header is "Does NOT own" — not "Does NOT touch."
 - If two modules need to know too much about each other, consider merging or
   introducing an abstraction.
 
@@ -149,7 +162,7 @@ shared ambiguously between two modules. User approves.
 **Quality check before closing:**
 - Cohesive: the module set tells a consistent architectural story — no module feels bolted on
 - Concise: each responsibility statement is exactly one sentence, no exceptions
-- Clear: the "Does NOT touch" column is specific — not "other stuff", but named modules or concerns
+- Clear: the "Does NOT own" column is specific — not "other stuff", but named modules or concerns
 - Modular: each row is independently readable; no row requires another row to make sense
 
 **Output**: `## Module Map` section with ownership table.
@@ -176,11 +189,24 @@ before any code is written.
    ```
 3. Check: does the story flow naturally? Does any step feel forced or awkward?
 
+**State persistence probe**: For any workflow that spans multiple steps or
+sessions, ask how state is persisted and whether it needs to be shared across
+machines or users. This question often surfaces new modules or changes existing
+boundaries. Ask it before the journey is approved, not after.
+
+**Command naming**: If the project has a CLI or command surface, establish the
+naming convention during the journey narrative — not in Pass 5. Naming
+decisions affect how steps are described and whether commands are standalone
+or orchestrated. Surface the convention once and apply it consistently.
+
 **Rules:**
 - If the narrative feels wrong, fix the module map (Pass 3) before proceeding.
   Do not paper over architecture issues with implementation cleverness.
 - The narrative should not mention *how* things are implemented — only *what*
   moves between which parts.
+- Expect the journey to go through multiple revisions. Each revision that
+  simplifies the architecture is the process working correctly — do not rush
+  to lock.
 
 **Exit condition**: A clean end-to-end narrative the user agrees "feels right."
 If it doesn't feel right, loop back to Pass 3.
@@ -208,8 +234,6 @@ Rules for the interaction map:
 - If two modules call each other bidirectionally, flag it as a design smell
   before proceeding to Pass 5 — circular dependencies should be resolved at
   the architecture level, not worked around in code
-- This table becomes the authority for NX dependency graph boundaries in
-  Pass 5
 
 **Output**: `## Core Journey` + `## Interaction Map` sections.
 
@@ -239,19 +263,28 @@ narrowing to one slice.
 ```markdown
 ## Journey Backlog
 
-| Priority | Journey                      | Depends On | Notes                          |
-|----------|------------------------------|------------|--------------------------------|
-| 1        | Start a story                | —          | Entry point for everything     |
-| 2        | View current stage           | Slice 1    | Trivial once state exists      |
-| 3        | Advance to next stage        | Slice 1    | Core lifecycle logic lives here|
-| 4        | Generate PR description      | Slice 3    | Needs stage context            |
-| 5        | Mark story complete          | Slice 3    | Final lifecycle transition     |
+| Priority | Journey               | Depends On | Modules                   | Notes                      |
+|----------|-----------------------|------------|---------------------------|----------------------------|
+| 1        | Start a story         | —          | Commands, State Store     | Entry point for everything |
+| 2        | View current stage    | Slice 1    | Commands                  | Trivial once state exists  |
+| 3        | Advance to next stage | Slice 1    | Commands, Domain          | Core lifecycle logic       |
+| 4        | Generate PR desc      | Slice 3    | Planning Core, GitHub     | Needs stage context        |
+| 5        | Mark story complete   | Slice 3    | Commands                  | Final lifecycle transition |
 ```
+
+**Mocks-first build order**: When the system has external adapters (APIs, CLIs,
+third-party services), recommend building with mocked adapters first, then
+implementing real adapters in isolation, then integrating one at a time. This
+validates orchestration logic before external dependencies are introduced and
+surfaces integration issues one at a time. Structure the backlog to reflect
+this order.
 
 **Rules:**
 - The backlog is the contract for the whole system — it tells you what exists
   and in what order, without detailing how
-- Do not detail any slice beyond its name, dependencies, and a one-line note
+- Include a Modules column — it makes dependency and integration sequencing
+  visible at a glance
+- Do not detail any slice beyond its name, dependencies, modules, and a one-line note
 - Dependency order is non-negotiable — a slice cannot be planned or built
   before its dependencies are implemented and validated
 - If two capabilities are trivially coupled (building one takes 10% more
@@ -285,6 +318,8 @@ implementation detail sufficient for Claude Code to execute without ambiguity.
 
 **When to run**: Only when the previous slice is implemented and validated.
 Re-run this pass for each new slice as it becomes the next in line.
+**Never run Pass 5 for multiple slices at once** — even if asked. One slice,
+then stop.
 
 **For each slice, define:**
 - File names and locations
@@ -293,6 +328,17 @@ Re-run this pass for each new slice as it becomes the next in line.
 - What can be reused from previous slices vs. what is new
 - Error cases and how they're handled
 - Acceptance criteria — how do you know this slice is done?
+
+**Slice file convention**: Write Pass 5 output to an individual slice file,
+not appended to `PLAN.md`. File naming: `{NN}-{concise-slug}.slice.md` in
+`docs/plans/slices/`. Each slice file must include:
+- Navigation links: `[← Plan](../PLAN.md)`, previous slice, next slice
+- Depends On, Modules, Status fields in the header
+- Full implementation plan and acceptance criteria
+
+After writing the slice file, update the Journey Backlog row in `PLAN.md` to
+link to it. Stub files for future slices (no Pass 5 content yet) are
+acceptable — they keep the navigation chain intact.
 
 **Rules:**
 - One slice at a time. Don't detail Slice 3 until Slice 2 is done.
@@ -310,14 +356,15 @@ with no further clarification needed.
 - Clear: acceptance criteria are binary — each one either passes or fails, no grey area
 - Modular: this slice section references prior slices by name for shared foundations rather than re-explaining them
 
-**Output**: New subsection appended to `## Slices` for the current slice only.
+**Output**: New `{NN}-{concise-slug}.slice.md` file. Journey Backlog row in
+`PLAN.md` updated to link to it.
 
 ---
 
 ## Output Document Structure
 
-After all passes, the plan skill should produce a single markdown document
-with this structure:
+After all passes, the plan skill should produce a single `PLAN.md` with this
+structure, plus individual slice files linked from the backlog:
 
 ```markdown
 # [Project Name] — Plan
@@ -335,9 +382,14 @@ with this structure:
 - Y
 
 ## Module Map
-| Module | Owns | Does NOT touch |
-|--------|------|----------------|
-| ...    | ...  | ...            |
+| Module | Owns | Does NOT own |
+|--------|------|--------------|
+| ...    | ...  | ...          |
+
+## Command Surface
+| Command | Type |
+|---------|------|
+| ...     | ...  |
 
 ## Core Journey
 1. ...
@@ -350,14 +402,19 @@ with this structure:
 | ...    | ...   | ... |
 
 ## Journey Backlog
-| Priority | Journey | Depends On | Notes |
-|----------|---------|------------|-------|
-| ...      | ...     | ...        | ...   |
-
-## Slices
-### Slice 1 — [Name]
-...
+| Priority | Journey | Depends On | Modules | Notes |
+|----------|---------|------------|---------|-------|
+| 1        | [Slice name](slices/01-slug.slice.md) | — | ... | ... |
+| ...      | ...     | ...        | ...     | ...   |
 ```
+
+**Command Surface section**: Include whenever the project has a user-facing
+command surface (CLI, slash commands, scripts). Columns: Command, Type. Types
+are: "User-invoked", "Orchestrator", "Stage command (called by X)",
+"Scheduled/background trigger".
+
+**Slice files**: `docs/plans/slices/{NN}-{slug}.slice.md` — one per backlog
+entry, stub or full. Journey Backlog rows link to them.
 
 This document becomes the project's `PLAN.md` and should be referenced from
 `CLAUDE.md`.
@@ -382,10 +439,19 @@ This document becomes the project's `PLAN.md` and should be referenced from
   wrong in some way, return to the appropriate pass and re-run forward from
   there. Don't just patch the code — patch the plan first.
 
+- **Let the journey breathe.** The Core Journey in Pass 4 often goes through
+  many revisions as the user catches ordering issues, naming decisions, or
+  concurrency questions. This is the process working correctly — do not rush
+  to lock the journey. Each revision that simplifies the architecture is worth
+  the extra turns.
+
+- **One Pass 5 at a time.** Never produce implementation detail for more than
+  one slice in a single session, even if asked. Future slices will change based
+  on what earlier slices reveal. Stub files are fine — full detail is not.
+
 ---
 
 ## References
 
 - `references/pass-examples.md` — Annotated examples of good vs. bad pass
-  outputs (create this after running the skill on Zenflow as the first real
-  example)
+  outputs (create this after the first real project run)

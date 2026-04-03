@@ -295,7 +295,44 @@ this order.
 **Exit condition**: Every Pass 2 capability maps to exactly one backlog entry.
 User approves the priority order. No capability is unaccounted for.
 
-**Output**: `## Journey Backlog` section.
+**Output**: `## Journey Backlog` section in `PLAN.md`. `STATUS.md` created alongside it.
+
+**STATUS.md**: Create at the same time as the Journey Backlog. It is the build progress tracker — updated at the start of each Pass 5 session and after each slice is validated. Structure:
+
+```markdown
+# [Project Name] — Build Status
+
+[← Plan](PLAN.md)
+
+**Current slice:** Slice 1 — [slice name]
+**Overall progress:** 1 of N slices (not started)
+
+---
+
+## Slice 1 — [Slice Name]
+
+**Status:** Not started
+
+| Deliverable | Status | Notes |
+|---|---|---|
+| `path/to/file.ts` | ✗ Missing | — |
+
+### Acceptance Criteria
+
+- [ ] criterion one
+- [ ] criterion two
+
+---
+
+## Backlog
+
+| Slice | Journey | Status |
+|---|---|---|
+| 1 | Slice name | ⬜ Not started |
+| 2 | Slice name | ⬜ Not started |
+```
+
+Status values: `⬜ Not started` / `🔄 In Progress` / `✅ Complete`
 
 **Quality check before closing:**
 - Cohesive: the backlog reads as a logical progression — each slice builds on the last
@@ -331,14 +368,16 @@ then stop.
 
 **Slice file convention**: Write Pass 5 output to an individual slice file,
 not appended to `PLAN.md`. File naming: `{NN}-{concise-slug}.slice.md` in
-`docs/plans/slices/`. Each slice file must include:
+`docs/plans/{plan-name}/slices/`. Each slice file must include:
 - Navigation links: `[← Plan](../PLAN.md)`, previous slice, next slice
 - Depends On, Modules, Status fields in the header
 - Full implementation plan and acceptance criteria
 
-After writing the slice file, update the Journey Backlog row in `PLAN.md` to
-link to it. Stub files for future slices (no Pass 5 content yet) are
-acceptable — they keep the navigation chain intact.
+After writing the slice file:
+1. Update the Journey Backlog row in `PLAN.md` to link to it
+2. Update `STATUS.md` — set current slice, mark it `🔄 In Progress`, populate its deliverables table and acceptance criteria checklist from the slice file
+
+Stub files for future slices (no Pass 5 content yet) are acceptable — they keep the navigation chain intact.
 
 **Rules:**
 - One slice at a time. Don't detail Slice 3 until Slice 2 is done.
@@ -356,15 +395,27 @@ with no further clarification needed.
 - Clear: acceptance criteria are binary — each one either passes or fails, no grey area
 - Modular: this slice section references prior slices by name for shared foundations rather than re-explaining them
 
-**Output**: New `{NN}-{concise-slug}.slice.md` file. Journey Backlog row in
-`PLAN.md` updated to link to it.
+**Output**: New `{NN}-{concise-slug}.slice.md` file. Journey Backlog row in `PLAN.md` linked. `STATUS.md` updated to reflect current slice in progress.
 
 ---
 
 ## Output Document Structure
 
-After all passes, the plan skill should produce a single `PLAN.md` with this
-structure, plus individual slice files linked from the backlog:
+After all passes, the plan skill produces a folder at `docs/plans/{plan-name}/`:
+
+```
+docs/plans/{plan-name}/
+├── PLAN.md       # Full plan — all pass outputs (Passes 1–4.5)
+├── STATUS.md     # Build progress tracker — current slice, checklist, backlog status
+└── slices/
+    ├── 01-{slug}.slice.md   # Pass 5 output for Slice 1
+    ├── 02-{slug}.slice.md   # Pass 5 output for Slice 2
+    └── ...
+```
+
+`{plan-name}` is derived from the project or feature name argument — kebab-cased, concise (e.g. `zen-story`, `auth-refactor`, `onboarding-flow`).
+
+`PLAN.md` structure:
 
 ```markdown
 # [Project Name] — Plan
@@ -413,11 +464,11 @@ command surface (CLI, slash commands, scripts). Columns: Command, Type. Types
 are: "User-invoked", "Orchestrator", "Stage command (called by X)",
 "Scheduled/background trigger".
 
-**Slice files**: `docs/plans/slices/{NN}-{slug}.slice.md` — one per backlog
-entry, stub or full. Journey Backlog rows link to them.
+**Slice files**: `docs/plans/{plan-name}/slices/{NN}-{slug}.slice.md` — one per backlog entry, stub or full. Journey Backlog rows link to them.
 
-This document becomes the project's `PLAN.md` and should be referenced from
-`CLAUDE.md`.
+This folder becomes the project's plan and should be referenced from `CLAUDE.md`:
+- Plan: `docs/plans/{plan-name}/PLAN.md`
+- Build status: `docs/plans/{plan-name}/STATUS.md`
 
 ---
 

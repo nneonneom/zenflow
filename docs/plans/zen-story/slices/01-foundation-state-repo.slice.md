@@ -14,7 +14,7 @@
 
 | File | Purpose |
 |---|---|
-| `.claude/skills/zen-setup/SKILL.md` | One-time setup wizard — user-facing |
+| `skills/zen-setup/SKILL.md` | One-time setup wizard — user-facing |
 | `.claude/scripts/state.sh` | State Store helper — internal, never invoked directly |
 | `docs/state-schema.md` | `state.json` schema reference |
 
@@ -31,6 +31,8 @@
   "feature_branch": "zenflow/PROJ-123-concise-description",
   "pr_url": null,
   "approved_plan": false,
+  "current_slice": null,
+  "total_slices": null,
   "assigned_to": "user@example.com",
   "created_at": "2026-04-03T00:00:00Z",
   "updated_at": "2026-04-03T00:00:00Z"
@@ -46,7 +48,7 @@
 | `state_init` | `state_init <project_key> <story_id>` | Creates branch `{project_key}/{story_id}` in state repo, writes initial `state.json` |
 | `state_read` | `state_read <project_key> <story_id>` | Pulls branch, prints `state.json` to stdout |
 | `state_write` | `state_write <project_key> <story_id> <json_patch>` | Merges patch into `state.json`, commits, pushes |
-| `state_write_plan` | `state_write_plan <project_key> <story_id> <content>` | Writes `plan.md`, commits, pushes |
+| `state_write_plan` | `state_write_plan <project_key> <story_id> <plan_content> <status_content> [<slice_files_dir>]` | Writes `plan.md`, `status.md`, and `slices/` to branch, commits, pushes |
 | `state_branch_exists` | `state_branch_exists <project_key> <story_id>` | Returns 0 if branch exists, 1 if not |
 
 All functions read `ZENFLOW_STATE_REPO` from env. No function touches project repo files.
@@ -95,6 +97,6 @@ All functions read `ZENFLOW_STATE_REPO` from env. No function touches project re
 - [ ] `state_init` creates a branch in `zenflow-state` with a valid `state.json`
 - [ ] `state_read` returns parseable JSON from an existing branch
 - [ ] `state_write` merges a patch, commits, and pushes — `updated_at` is updated
-- [ ] `state_write_plan` writes `plan.md` to the branch and pushes
+- [ ] `state_write_plan` writes `plan.md`, `status.md`, and `slices/` to the branch and pushes
 - [ ] `state_branch_exists` correctly returns 0/1 without side effects
 - [ ] All required env vars are documented in `docs/state-schema.md`

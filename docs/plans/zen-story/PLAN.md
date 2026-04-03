@@ -46,10 +46,10 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 |---|---|---|
 | **Commands / Workflows** | Slash commands, skill entry points, multi-step orchestration, stage transitions, handoff logic, approval/refinement prompts | Artifact generation, external API calls |
 | **Planning Core** | Generation of plans, technical designs, diagrams, and story implementation plans | Workflow state, external services, user interaction |
-| **State Store** | Reading/writing workflow state to `zenflow-state` repo branches (`{project-key}/{story-id}`), `plan.md` and `state.json` per branch | Business logic, artifact generation, orchestration |
-| **Jira Adapter** | All Jira operations via `jira-cli` (primary) + Jira REST API (fallback) — fetch stories, move to In Progress | GitHub, Teams, workflow state, artifact generation |
-| **gh CLI** | All GitHub operations — feature branches, PRs, PR comment handling, `zenflow-state` repo reads/writes | Jira, Teams, workflow logic, artifact generation |
-| **Teams Adapter** | All Teams operations — notifications, approval messages (implementation TBD: webhook or Graph API) | Jira, GitHub, workflow state, artifact generation |
+| **State Store** | Reading/writing workflow state to `zenflow-state` repo branches (`{project-key}/{story-id}`), `state.json`, `plan.md`, `status.md`, and `slices/` per branch | Business logic, artifact generation, orchestration |
+| **issue-tracker-adapter** | All Jira operations via `jira-cli` (primary) + Jira REST API (fallback) — fetch stories, move to In Progress | GitHub, Teams, workflow state, artifact generation |
+| **repo-adapter** | All GitHub operations — feature branches, PRs, PR comment handling, `zenflow-state` repo reads/writes | Jira, Teams, workflow logic, artifact generation |
+| **notifier-adapter** | All Teams operations — notifications, approval messages (implementation TBD: webhook or Graph API) | Jira, GitHub, workflow state, artifact generation |
 | **PR Monitor** | Scheduled cron trigger, polling active PRs in `zenflow-state`, detecting review comments and approvals, invoking `zen-story` on events, sending Teams notifications on approval | Workflow orchestration, artifact generation, PR operations beyond status checks |
 
 **API credentials** live in `.claude/settings.json` env section — not a module.
@@ -58,9 +58,9 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 
 | Capability | Module |
 |---|---|
-| Create epics/stories in Jira | Jira Adapter |
-| Create feature branches in GitHub | gh CLI |
-| Send notifications via Teams | Teams Adapter |
+| Create epics/stories in Jira | issue-tracker-adapter |
+| Create feature branches in GitHub | repo-adapter |
+| Send notifications via Teams | notifier-adapter |
 | Generate epic plans | Planning Core |
 | Generate technical design documents | Planning Core |
 | Generate architecture diagrams | Planning Core |
@@ -68,7 +68,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 | Trigger epic lifecycle workflow | Commands / Workflows |
 | Trigger story implementation workflow | Commands / Workflows |
 | Approve/refine artifacts at any stage | Commands / Workflows |
-| Hand off workflow stage to another team member | Commands / Workflows + Teams Adapter |
+| Hand off workflow stage to another team member | Commands / Workflows + notifier-adapter |
 | Pause workflow | Commands / Workflows + State Store |
 | Resume workflow | Commands / Workflows + State Store |
 | Manual PR check | PR Monitor |
@@ -96,10 +96,10 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 
 1. Developer runs `zen-story` with optional story ID
 2. `zen-story` calls `story-start` — fetches story from Jira via `jira-cli` (or prompts user to select from assigned non-closed stories), moves story to In Progress, initializes `state.json` on `zenflow-state/{project-key}/{story-id}` branch
-3. `zen-story` calls `story-plan` — Planning Core generates implementation plan, asks clarifying questions if needed, confirms target PR branch (default: main), presents plan for user approval
-4. User approves plan — `plan.md` and updated `state.json` committed to state branch
+3. `zen-story` calls `story-plan` — Planning Core generates a sliced implementation plan: asks clarifying questions if needed, confirms target PR branch (default: main), breaks work into ordered implementation slices, presents full plan for user approval
+4. User approves plan — `plan.md` (full plan with slice backlog), `status.md` (current slice tracker), `slices/` (per-slice detail), and updated `state.json` (with `current_slice: 1`) committed to state branch
 5. `zen-story` creates feature branch `zenflow/{story-id}-{concise-description}` via `gh` CLI
-6. `zen-story` calls `story-implement` — executes approved plan, notifies developer via Teams if input needed mid-implementation
+6. `zen-story` calls `story-implement` — executes the current slice from `status.md`, updates `state.json` and `status.md` on completion, notifies developer via Teams if input needed mid-implementation; repeats until all slices complete
 7. Quality checks and test suite run
 8. `zen-story` calls `story-create-pr` — Planning Core generates PR description from plan and story context, `gh` CLI opens PR to target branch, PR URL written to `state.json`
 9. `zen-story` hands off to PR Monitor and exits
@@ -120,31 +120,31 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 |---|---|---|
 | `zen-story` | `story-start` | optional story ID argument |
 | `zen-story` | `story-plan` | story context from State Store |
-| `zen-story` | `gh` CLI | create feature branch |
+| `zen-story` | `repo-adapter` | create feature branch |
 | `zen-story` | `story-implement` | approved plan from State Store |
 | `zen-story` | `story-create-pr` | workflow state (branch, target branch) |
 | `zen-story` | PR Monitor | workflow state handoff after PR creation |
 | `zen-resume` | `zen-story` | stage + context from State Store |
-| `story-start` | Jira Adapter | story ID or assigned story fetch |
+| `story-start` | `issue-tracker-adapter` | story ID or assigned story fetch |
 | `story-start` | State Store | initialize state branch |
-| `story-plan` | Planning Core | story context + clarifying Q&A |
-| `story-plan` | State Store | write approved plan + state |
-| `story-implement` | Planning Core | approved plan from State Store |
-| `story-implement` | Teams Adapter | mid-implementation notifications |
+| `story-plan` | Planning Core | story context + clarifying Q&A → sliced plan |
+| `story-plan` | State Store | write `plan.md`, `status.md`, `slices/`, updated `state.json` (`current_slice: 1`) |
+| `story-implement` | Planning Core | current slice from `status.md` via State Store |
+| `story-implement` | `notifier-adapter` | mid-implementation notifications |
 | `story-create-pr` | Planning Core | generate PR description |
-| `story-create-pr` | gh CLI | open PR, write PR URL to state |
+| `story-create-pr` | `repo-adapter` | open PR, write PR URL to state |
 | `story-create-pr` | State Store | write PR URL to state |
-| PR Monitor | `gh` CLI | fetch PR status and comments |
+| PR Monitor | `repo-adapter` | fetch PR status and comments |
 | PR Monitor | `zen-story` | PR event + workflow state |
-| PR Monitor | Teams Adapter | approval notification |
+| PR Monitor | `notifier-adapter` | approval notification |
 | PR Monitor | State Store | mark workflow complete |
 
 **Notes:**
 - Stage commands are pure leaves — they never call each other
 - `zen-story` is the only orchestrator of stage commands
-- `gh` CLI owns all GitHub operations including `zenflow-state` repo reads/writes
+- `repo-adapter` owns all GitHub operations including `zenflow-state` repo reads/writes
 - API credentials stored in `.claude/settings.json` env section
-- `jira-cli` is primary for Jira operations, REST API is fallback
+- `jira-cli` is primary for issue-tracker-adapter operations, REST API is fallback
 
 ---
 
@@ -157,14 +157,14 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 | 3 | [`story-plan` with mocked Planning Core](slices/03-story-plan-mocked.slice.md) | Slice 2 | Commands / Workflows, Planning Core, State Store | Mocked plan generation, real approval flow |
 | 4 | [`story-implement` with mocked Planning Core + Teams](slices/04-story-implement-mocked.slice.md) | Slice 3 | Commands / Workflows, Planning Core, State Store | Mocked implementation, real quality/test invocation |
 | 5 | [`zen-story` MVP end-to-end with all mocks](slices/05-zen-story-mvp.slice.md) | Slice 4 | Commands / Workflows, State Store | First fully runnable workflow, validates orchestration |
-| 6 | [Real Jira Adapter in isolation](slices/06-jira-adapter.slice.md) | Slice 5 | Jira Adapter | `jira-cli` + REST API fallback — tested standalone |
+| 6 | [Real issue-tracker-adapter in isolation](slices/06-jira-adapter.slice.md) | Slice 5 | issue-tracker-adapter | `jira-cli` + REST API fallback — tested standalone |
 | 7 | [Real Planning Core in isolation](slices/07-planning-core.slice.md) | Slice 5 | Planning Core | Real plan generation with clarifying Q&A — tested standalone |
-| 8 | [Real Teams Adapter in isolation](slices/08-teams-adapter.slice.md) | Slice 5 | Teams Adapter | Webhook or Graph API TBD — tested standalone |
-| 9 | [Real GitHub Integration in isolation](slices/09-github-integration.slice.md) | Slice 5 | gh CLI, Planning Core, State Store | `gh` CLI setup, branch creation, PR creation, PR description — tested standalone |
+| 8 | [Real notifier-adapter in isolation](slices/08-teams-adapter.slice.md) | Slice 5 | notifier-adapter | Webhook or Graph API TBD — tested standalone |
+| 9 | [Real repo-adapter in isolation](slices/09-github-integration.slice.md) | Slice 5 | repo-adapter, Planning Core, State Store | `gh` CLI setup, branch creation, PR creation, PR description — tested standalone |
 | 10 | [Integrate real adapters into stage commands one at a time](slices/10-adapter-integration.slice.md) | Slices 6-9 | Commands / Workflows, all Adapters | `story-start` → `story-plan` → `story-implement` → `story-create-pr` each validated with real tools |
 | 11 | [Full `zen-story` end-to-end with real adapters](slices/11-zen-story-e2e.slice.md) | Slice 10 | Commands / Workflows, all Adapters, State Store | Full workflow validated against real Jira, GitHub, Teams |
 | 12 | [State Persistence: `zen-pause` + `zen-resume`](slices/12-state-persistence.slice.md) | Slice 11 | State Store, Commands / Workflows, gh CLI | Cross-machine resume via state branch |
 | 13 | [PR Monitor: `zen-pr-monitor` cron + `zen-pr-check`](slices/13-pr-monitor.slice.md) | Slice 11 | PR Monitor, gh CLI, State Store, Teams Adapter | Polls active PRs, re-invokes `zen-story` on events |
-| 14 | [Handoff: pass workflow to another team member](slices/14-handoff.slice.md) | Slice 13 | Commands / Workflows, Teams Adapter, State Store | Teams notification + state branch ownership transfer |
+| 14 | [Handoff: pass workflow to another team member](slices/14-handoff.slice.md) | Slice 13 | Commands / Workflows, notifier-adapter, State Store | Teams notification + state branch ownership transfer |
 | 15 | [`zen-reset`: reset workflow state](slices/15-zen-reset.slice.md) | Slice 12 | State Store, Commands / Workflows | Deferred — low priority |
-| 16 | [Epic Workflow: `zen-epic` + full epic lifecycle](slices/16-epic-workflow.slice.md) | Slice 11 | Commands / Workflows, Planning Core, Jira Adapter, gh CLI, Teams Adapter, State Store | Deferred — next quarter |
+| 16 | [Epic Workflow: `zen-epic` + full epic lifecycle](slices/16-epic-workflow.slice.md) | Slice 11 | Commands / Workflows, Planning Core, issue-tracker-adapter, repo-adapter, notifier-adapter, State Store | Deferred — next quarter |

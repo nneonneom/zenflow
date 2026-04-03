@@ -1,0 +1,10 @@
+{
+  "name": "zenflow",
+  "description": "Full software development lifecycle plugin — from story to merged PR, automated and in flow.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Zenflow"
+  },
+  "repository": "https://github.com/yourusername/zenflow",
+  "license": "MIT"
+}

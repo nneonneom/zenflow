@@ -86,9 +86,9 @@ claude plugin install ./zenflow
 
 Zenflow requires:
 - `ZENFLOW_STATE_REPO` — a GitHub repo used to persist workflow state across sessions and machines
-- Jira credentials (via `jira-cli` config)
-- GitHub credentials (via `gh auth login`)
-- Microsoft Teams webhook URL (for notifications)
+- Jira credentials (via `jira-cli` config) — used by `issue-tracker-adapter`
+- GitHub credentials (via `gh auth login`) — used by `repo-adapter`
+- Microsoft Teams webhook URL — used by `notifier-adapter`
 
 Credentials are stored in `.claude/settings.json` env section — never committed.
 
@@ -98,21 +98,26 @@ Credentials are stored in `.claude/settings.json` env section — never committe
 
 ```
 zenflow/
+├── .claude-plugin/
+│   └── plugin.json                 # Plugin manifest
 ├── skills/
-│   ├── diffusion-planner/   # Pass-based planning methodology
-│   ├── commands/            # zen-story, zen-resume, zen-pause, zen-pr-check
-│   ├── planning-core/       # Plan, design doc, diagram, and PR description generation
-│   ├── state-store/         # zenflow-state repo reads/writes (state.json, plan.md)
-│   ├── jira-adapter/        # jira-cli + REST API fallback
-│   ├── gh-cli/              # GitHub branch, PR, and state repo operations
-│   ├── teams-adapter/       # Teams notifications and approval messages
-│   └── pr-monitor/          # Cron-triggered PR polling and event dispatch
-├── scripts/
-│   └── state.sh             # State store utilities (source in your shell)
+│   ├── zen-setup/                  # One-time setup wizard (user-facing)
+│   ├── diffusion-planner/          # Pass-based planning methodology
+│   ├── commands/                   # zen-story, zen-resume, zen-pause, zen-pr-check
+│   ├── planning-core/              # Plan, design doc, diagram, and PR description generation
+│   ├── state-store/                # zenflow-state repo reads/writes (state.json, plan.md)
+│   ├── issue-tracker-adapter/      # Story/epic operations (currently: jira-cli + REST API)
+│   ├── repo-adapter/               # Branch, PR, repo operations (currently: gh CLI)
+│   ├── notifier-adapter/           # Notifications and approvals (currently: Teams webhook)
+│   └── pr-monitor/                 # Cron-triggered PR polling and event dispatch
+├── hooks/                          # Hook definitions (zen-pr-monitor cron trigger)
 ├── docs/
 │   └── plans/
-│       └── PLAN.md          # Full project plan and journey backlog
-├── CLAUDE.md                # Plugin context for Claude Code
+│       └── zen-story/
+│           ├── PLAN.md             # Full project plan and journey backlog
+│           ├── STATUS.md           # Current slice and build progress
+│           └── slices/             # Per-slice implementation plans
+├── CLAUDE.md                       # Plugin context for Claude Code
 └── README.md
 ```
 
@@ -143,7 +148,7 @@ Each command is a cycle. Each cycle is a refinement. Each release is an ascensio
 
 ## Status
 
-🌱 Early cultivation — active development. See [docs/plans/PLAN.md](docs/plans/PLAN.md) for the full journey backlog.
+🌱 Early cultivation — active development. See [docs/plans/zen-story/STATUS.md](docs/plans/zen-story/STATUS.md) for current progress.
 
 ---
 

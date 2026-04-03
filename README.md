@@ -10,12 +10,21 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 
 A cultivator does not rush. They refine.
 
+**The Deepening** — descend into the problem, refine until ready
+
 ```
-Requirements → Epic → Story → Plan → Implementation → PR → Merge
-                        ↑      ↑          ↑            |     |
-                        |      └──── PR comments ──────┘     |
-                        |                                    |
-                        └─────────── Each release ───────────┘
+Requirements → Epic Plan → Tech Design → Stories
+      ↕              ↕           ↕
+   (Q&A)         (revise)    (revise)
+```
+
+**The Ascent** — build up to merge, each release an ascension
+
+```
+Story → Plan → Implementation → PR → Merge
+  ↑      ↑          ↑           |      |
+  |      └── PR comments ───────┘      |
+  └──────────── Each release ──────────┘
 ```
 
 ---

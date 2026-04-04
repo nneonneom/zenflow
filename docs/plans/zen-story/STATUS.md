@@ -7,13 +7,15 @@
 
 ---
 
-## Slice 1 — Foundation: `zenflow-state` Repo Setup
+## Slice 1 — Foundation: State Store Setup
 
 **Status:** Complete
 
 | Deliverable | Status | Notes |
 |---|---|---|
-| `scripts/zenflow-store-state.sh` | ✅ Written | Single `zenflow-state` orphan branch on working repo; `{story-id}/` subfolders; no separate repo needed |
+| `scripts/zenflow-store-state.sh` | ✅ Amended | Adapter router — sources `state-adapter-local.sh` (default) or `state-adapter-api.sh` |
+| `scripts/state-adapter-local.sh` | ✅ Written | Local filesystem adapter — `~/.zenflow/{story-id}/` |
+| `scripts/state-adapter-api.sh` | ✅ Written | API adapter stub — not yet implemented |
 | `skills/zen-setup/SKILL.md` | ✅ Written | 5-step setup wizard |
 | `docs/state-schema.md` | ✅ Written | Full schema + env vars + function reference |
 
@@ -21,7 +23,7 @@
 
 - [ ] `zen-setup` completes without error on a fresh machine with valid credentials
 - [ ] `zen-setup` lists missing env vars clearly if any are absent
-- [ ] `state_init` creates a branch in `zenflow-state` with a valid `state.json`
+- [ ] `state_init` creates `~/.zenflow/{story_id}/state.json` with a valid schema
 - [ ] `state_read` returns parseable JSON from an existing branch
 - [ ] `state_write` merges a patch, commits, and pushes — `updated_at` is updated
 - [ ] `state_write_plan` writes `plan.md`, `status.md`, and `slices/` to the branch and pushes
@@ -48,7 +50,7 @@
 
 | Slice | Journey | Status |
 |---|---|---|
-| 1 | Foundation: `zenflow-state` repo setup | ✅ Complete |
+| 1 | Foundation: State Store setup | ✅ Complete |
 | 2 | `story-start` with mocked Jira | 🔄 In Progress |
 | 3 | `story-plan` with mocked Planning Core | ⬜ Not started |
 | 4 | `story-implement` with mocked Planning Core + Teams | ⬜ Not started |

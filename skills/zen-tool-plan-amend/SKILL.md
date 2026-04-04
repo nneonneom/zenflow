@@ -65,20 +65,38 @@ Keep options at the architecture level — not implementation detail.
 Present options clearly and ask the user to choose. Do not proceed until a
 decision is confirmed. Record the decision and the reason it was chosen.
 
-### 5 — Propagate the change
+### 5 — Revision summary
+
+Before touching any file, present a concise summary table of every planned
+change and ask the user to confirm:
+
+| File | What will change |
+|---|---|
+| `PLAN.md` | … |
+| `slices/XX-*.slice.md` | … |
+| … | … |
+
+Do not proceed until the user approves the revision summary.
+
+### 6 — Propagate the change
 
 Update every artifact identified in the impact analysis, in this order:
 
-1. `PLAN.md` — update the affected sections
-2. Slice files — update any that reference the old design; add an architecture
-   note if the slice is already marked complete
+1. `PLAN.md` — update the affected sections; review the Journey Backlog and
+   revise any entry whose description, dependencies, modules, or notes are
+   invalidated by the change
+2. Slice files — update any that reference the old design; for slices already
+   marked complete, add an architecture note and reconcile the Files table,
+   function references, and error cases against the actual code — note anything
+   not implemented or deferred rather than silently removing it
 3. Supporting docs — update schema docs, config docs, adapter docs
-4. `STATUS.md` — update notes if the current slice is affected
+4. `STATUS.md` — update notes and backlog entries if the current slice or any
+   listed slice is affected
 5. Code/scripts — update any implementation that assumed the old design
 
 For each file updated, state what changed and why.
 
-### 6 — Consistency check
+### 7 — Consistency check
 
 After all updates, re-read the full plan and verify:
 - No section still references the old design
@@ -88,7 +106,7 @@ After all updates, re-read the full plan and verify:
 
 If any inconsistency is found, fix it before closing.
 
-### 7 — Confirm amendment complete
+### 8 — Confirm amendment complete
 
 Summarise:
 - What changed

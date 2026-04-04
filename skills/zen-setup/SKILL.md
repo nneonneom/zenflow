@@ -12,9 +12,8 @@ One-time credential setup for Zenflow. Run this once after installing the
 plugin. No need to re-run when switching projects — per-project state is
 handled automatically when you run `/zen-story`.
 
-> **Important:** All zen-* commands must be run from inside the project repo
-> you intend to work on. Zenflow identifies the project via
-> `git remote get-url origin`.
+> **Important:** `zen-story` must be run from inside the project repo — it
+> uses `git` for branch and PR operations. `zen-epic` can be run from anywhere.
 
 ---
 

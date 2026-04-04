@@ -11,9 +11,9 @@ scripts/claude-set-env.sh JIRA_API_TOKEN "<token>"
 This writes values to `~/.claude/settings.json` so they're available in any Claude Code session.
 For all required env vars see `docs/state-schema.md`.
 
-No separate state repo is needed — state is stored on a `zenflow-state` orphan branch of the working repo.
+State is stored in `~/.zenflow/` by default (local adapter). Set `ZENFLOW_STATE_ADAPTER=api` to use the DynamoDB+S3 API adapter for cross-machine access.
 
-> **Important:** Always run zen-* commands from inside the project repo you want to work on. Zenflow identifies the project via `git remote get-url origin`.
+> **Important:** Run `zen-story` from inside the project repo — it needs `git` for branch and PR operations. `zen-epic` can be run from anywhere.
 
 ## Skills
 

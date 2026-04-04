@@ -51,7 +51,7 @@ Story → Plan → Implementation → PR → Merge
 ## Core Journey — Story Implementation
 
 1. Developer runs `zen-story` with optional story ID
-2. Fetches story from Jira, moves to In Progress, initializes state in the `zenflow-state` orphan branch of the working repo
+2. Fetches story from Jira, moves to In Progress, initializes state via the State Store adapter
 3. Planning Core generates implementation plan with clarifying Q&A — user approves before proceeding
 4. Feature branch created: `zenflow/{story-id}-{concise-description}`
 5. Approved plan executed — Teams notification sent if mid-implementation input needed
@@ -101,7 +101,7 @@ Zenflow requires:
 - Microsoft Teams webhook URL (`TEAMS_WEBHOOK_URL`) — used by `notifier-adapter`
 
 Credentials are stored in `~/.claude/settings.json` env section — never committed.
-Workflow state is stored on a `zenflow-state` orphan branch of the working repo — no separate state repo needed.
+Workflow state is stored in `~/.zenflow/` by default (local adapter). Set `ZENFLOW_STATE_ADAPTER=api` for cross-machine access via the DynamoDB+S3 API adapter.
 
 ---
 
@@ -117,11 +117,13 @@ zenflow/
 │   ├── commands/                   # zen-story, zen-resume, zen-pause, zen-pr-check
 │   ├── planning-core/              # Plan, design doc, diagram, and PR description generation
 │   ├── issue-tracker-adapter/      # Story/epic operations (currently: jira-cli + REST API)
-│   ├── repo-adapter/               # Branch, PR, and zenflow-state branch operations (gh CLI)
+│   ├── repo-adapter/               # Branch and PR operations (gh CLI)
 │   ├── notifier-adapter/           # Notifications and approvals (currently: Teams webhook)
 │   └── pr-monitor/                 # Cron-triggered PR polling and event dispatch
 ├── scripts/
-│   ├── zenflow-store-state.sh      # State Store functions (sourced by skills, never run directly)
+│   ├── zenflow-store-state.sh      # State Store adapter router (sourced by skills, never run directly)
+│   ├── state-adapter-local.sh      # Local filesystem adapter (~/.zenflow/)
+│   ├── state-adapter-api.sh        # API adapter stub (DynamoDB+S3 — not yet implemented)
 │   └── claude-set-env.sh           # Write env vars to ~/.claude/settings.json
 ├── hooks/                          # Hook definitions (zen-pr-monitor cron trigger)
 ├── docs/

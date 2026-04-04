@@ -12,7 +12,7 @@
 
 *Pass 5 not yet run — implement when Slice 11 is complete.*
 
-**Includes:** `zen-pause`, `zen-resume {story-id}` — cross-machine resume via `zenflow-state` branch.
+**Includes:** `zen-pause`, `zen-resume {story-id}` — local resume via `~/.zenflow/` (local adapter). Cross-machine resume requires switching to the API adapter (`ZENFLOW_STATE_ADAPTER=api`) — deferred to the API adapter slice.
 
 ---
 

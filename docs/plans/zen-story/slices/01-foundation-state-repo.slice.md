@@ -1,4 +1,4 @@
-# Slice 1 — Foundation: `zenflow-state` Repo Setup
+# Slice 1 — Foundation: State Store Setup
 
 [← Plan](../PLAN.md) | [Slice 2: `story-start` Mocked →](02-story-start-mocked.slice.md)
 
@@ -6,7 +6,7 @@
 **Modules:** State Store
 **Status:** Complete
 
-> **Architecture note:** Originally designed around a dedicated `zenflow-state` repo with one branch per story. Revised to use a single `zenflow-state` orphan branch on the working repo, with `{story-id}/` subfolders. No separate repo or `ZENFLOW_STATE_REPO` env var needed.
+> **Architecture note (amended):** State Store is an adapter-pattern interface. `zenflow-store-state.sh` sources the adapter selected by `ZENFLOW_STATE_ADAPTER` (default: `local`). The local adapter writes to `~/.zenflow/{story-id}/` — no git repo, no orphan branch, no `ZENFLOW_STATE_REPO` env var needed. The API adapter (future) will call a DynamoDB+S3 service and is stubbed at `scripts/state-adapter-api.sh`. The original orphan-branch implementation was replaced during amendment to support `zen-epic` workflows that have no associated git repo.
 
 ---
 
@@ -17,7 +17,9 @@
 | File | Purpose |
 |---|---|
 | `skills/zen-setup/SKILL.md` | One-time setup wizard — user-facing |
-| `.claude/scripts/state.sh` | State Store helper — internal, never invoked directly |
+| `scripts/zenflow-store-state.sh` | State Store adapter router — sources the correct adapter based on `ZENFLOW_STATE_ADAPTER`; never invoke directly |
+| `scripts/state-adapter-local.sh` | Local filesystem adapter — writes to `~/.zenflow/{story-id}/`; default adapter |
+| `scripts/state-adapter-api.sh` | API adapter stub — not yet implemented; swap in when DynamoDB+S3 service is ready |
 | `docs/state-schema.md` | `state.json` schema reference |
 
 ---
@@ -47,13 +49,14 @@
 
 | Function | Signature | Does |
 |---|---|---|
-| `state_init` | `state_init <project_key> <story_id>` | Creates `{story_id}/state.json` on `zenflow-state` branch (creates branch as orphan if needed) |
+| `state_init` | `state_init <project_key> <story_id>` | Creates `{story_id}/state.json` via the configured adapter |
 | `state_read` | `state_read <story_id>` | Prints `{story_id}/state.json` to stdout |
-| `state_write` | `state_write <story_id> <json_patch>` | Merges patch into `state.json`, commits, pushes |
-| `state_write_plan` | `state_write_plan <story_id> <plan_content> <status_content> [<slice_files_dir>]` | Writes `plan.md`, `status.md`, and `slices/` to `{story_id}/`, commits, pushes |
-| `state_branch_exists` | `state_branch_exists <story_id>` | Returns 0 if `{story_id}/state.json` exists on `zenflow-state`, 1 if not |
+| `state_write` | `state_write <story_id> <json_patch>` | Merges patch into `state.json`, updates `updated_at` |
+| `state_write_plan` | `state_write_plan <story_id> <plan_content> <status_content> [<slice_files_dir>]` | Writes `plan.md`, `status.md`, and `slices/` to `{story_id}/` |
+| `state_read_plan` | `state_read_plan <story_id>` | Prints `{story_id}/plan.md` to stdout |
+| `state_branch_exists` | `state_branch_exists <story_id>` | Returns 0 if `{story_id}/state.json` exists, 1 if not |
 
-All functions derive the repo URL from `git remote get-url origin`. No function touches working tree files.
+All functions are implemented per-adapter. The local adapter stores state in `~/.zenflow/{story_id}/`. No function touches working tree files or requires a git repo.
 
 ---
 
@@ -65,6 +68,7 @@ All functions derive the repo URL from `git remote get-url origin`. No function 
 | `JIRA_EMAIL` | Atlassian account email |
 | `JIRA_API_TOKEN` | Atlassian API token (used by `jira-cli` and REST API) |
 | `TEAMS_WEBHOOK_URL` | Teams incoming webhook URL *(TBD — leave blank until Slice 8)* |
+| `ZENFLOW_STATE_ADAPTER` | `local` (default) or `api` *(API adapter not yet implemented)* |
 
 `GITHUB_TOKEN` is not needed — `gh` CLI handles auth via `gh auth login`.
 
@@ -88,9 +92,9 @@ created automatically on first `state_init` call.
 |---|---|
 | Missing env var | `zen-setup` prompts for value and writes it |
 | `gh` not installed | Exit with install instructions |
-| Not inside a git repo | `zenflow-store-state.sh` guard exits with clear message |
-| No `origin` remote | `zenflow-store-state.sh` guard exits with clear message |
-| Story state already exists on `state_init` | Prompt: resume existing or abort |
+| Unknown `ZENFLOW_STATE_ADAPTER` value | `zenflow-store-state.sh` exits with clear message listing valid values |
+| `~/.zenflow/` not writable (local adapter) | `state_init` exits with permission error |
+| Story state already exists on `state_init` | Prompt: resume existing or abort *(not implemented — deferred)* |
 
 ---
 
@@ -98,7 +102,7 @@ created automatically on first `state_init` call.
 
 - [ ] `zen-setup` completes without error on a fresh machine with valid credentials
 - [ ] `zen-setup` prompts for and writes any missing Jira env vars
-- [ ] `state_init` creates a branch in `zenflow-state` with a valid `state.json`
+- [ ] `state_init` creates `~/.zenflow/{story_id}/state.json` with a valid schema
 - [ ] `state_read` returns parseable JSON from an existing branch
 - [ ] `state_write` merges a patch, commits, and pushes — `updated_at` is updated
 - [ ] `state_write_plan` writes `plan.md`, `status.md`, and `slices/` to the branch and pushes

@@ -1,18 +1,22 @@
 # Zenflow State Schema
 
-This document describes the state stored in the `zenflow-state` branch and
-the environment variables required by Zenflow adapters.
+This document describes the state stored by the State Store and the
+environment variables required by Zenflow adapters.
 
 ---
 
 ## Storage Layout
 
-State lives on a single orphan branch named `zenflow-state` on the working
-repo. No separate repo is needed — the branch shares no history with `main`
-or any feature branch.
+State is managed by the State Store adapter selected via `ZENFLOW_STATE_ADAPTER`
+(default: `local`). The adapter is sourced by `scripts/zenflow-store-state.sh`.
+
+### Local adapter (default)
+
+State lives in `~/.zenflow/` on the current machine. No git repo or external
+service required.
 
 ```
-Branch: zenflow-state   (orphan — no shared history with main)
+~/.zenflow/
 
   PROJ-123/
     state.json     — workflow state (see schema below)
@@ -25,9 +29,19 @@ Branch: zenflow-state   (orphan — no shared history with main)
     ...
 ```
 
-Each story gets its own subfolder. No story's files ever touch another's.
-The `zenflow-state` branch is created automatically on the first `state_init`
-call if it doesn't exist yet.
+Each story or epic gets its own subfolder keyed by its Jira ID. No item's
+files ever touch another's. The `~/.zenflow/` directory is created
+automatically on the first `state_init` call.
+
+> **Note:** The local adapter is machine-local. Cross-machine resume and team
+> handoff are not available with this adapter — they require the API adapter.
+
+### API adapter (future)
+
+When `ZENFLOW_STATE_ADAPTER=api`, the State Store calls a DynamoDB+S3 service.
+Structured state (`state.json`) goes to DynamoDB; documents (`plan.md`,
+`status.md`, `slices/`) go to S3. Not yet implemented — see
+`scripts/state-adapter-api.sh`.
 
 ---
 
@@ -80,8 +94,8 @@ call if it doesn't exist yet.
 ## Required Env Vars
 
 Set these in the `env` section of `~/.claude/settings.json` using
-`scripts/claude-set-env.sh`. These are used by the Jira and Teams adapters —
-not by the State Store itself.
+`scripts/claude-set-env.sh`. These are used by the Jira, Teams, and State
+Store adapters.
 
 | Var | Description | Required |
 |---|---|---|
@@ -89,23 +103,22 @@ not by the State Store itself.
 | `JIRA_EMAIL` | Atlassian account email | Yes |
 | `JIRA_API_TOKEN` | Atlassian API token — used by `jira-cli` and REST API fallback | Yes |
 | `TEAMS_WEBHOOK_URL` | Microsoft Teams incoming webhook URL | No — leave blank until Slice 8 |
+| `ZENFLOW_STATE_ADAPTER` | `local` (default) or `api` | No — defaults to `local` |
 
-`GITHUB_TOKEN` and `ZENFLOW_STATE_REPO` are not needed — `gh` CLI handles
-GitHub auth via `gh auth login`, and the State Store derives the repo URL
-from `git remote get-url origin`.
+`GITHUB_TOKEN` is not needed — `gh` CLI handles GitHub auth via `gh auth login`.
 
 ---
 
 ## State Store Functions
 
-Implemented in [`scripts/zenflow-store-state.sh`](../scripts/zenflow-store-state.sh).
-Source this file to use the functions — never invoke it directly.
+Implemented per-adapter. Source `scripts/zenflow-store-state.sh` to use the
+functions — never invoke it directly.
 
 | Function | Signature | Does |
 |---|---|---|
-| `state_branch_exists` | `state_branch_exists <story_id>` | Returns 0 if `{story_id}/state.json` exists on `zenflow-state`, 1 if not |
-| `state_init` | `state_init <project_key> <story_id>` | Creates `{story_id}/state.json` on `zenflow-state` (creates branch if needed) |
+| `state_branch_exists` | `state_branch_exists <story_id>` | Returns 0 if `{story_id}/state.json` exists, 1 if not |
+| `state_init` | `state_init <project_key> <story_id>` | Creates `{story_id}/state.json` via the configured adapter |
 | `state_read` | `state_read <story_id>` | Prints `{story_id}/state.json` to stdout |
-| `state_write` | `state_write <story_id> <json_patch>` | Merges patch into `state.json`, updates `updated_at`, commits, pushes |
-| `state_write_plan` | `state_write_plan <story_id> <plan_content> <status_content> [<slice_files_dir>]` | Writes `plan.md`, `status.md`, and optionally `slices/` to `{story_id}/`, commits, pushes |
+| `state_write` | `state_write <story_id> <json_patch>` | Merges patch into `state.json`, updates `updated_at` |
+| `state_write_plan` | `state_write_plan <story_id> <plan_content> <status_content> [<slice_files_dir>]` | Writes `plan.md`, `status.md`, and optionally `slices/` to `{story_id}/` |
 | `state_read_plan` | `state_read_plan <story_id>` | Prints `{story_id}/plan.md` to stdout |

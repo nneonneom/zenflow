@@ -18,8 +18,8 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 - User can trigger an epic lifecycle workflow (epic planning → technical design → story breakdown and prioritization)
 - User can trigger a story implementation workflow (start story → generate plan → approve/refine → create branch → implement → test → create PR → address PR comments)
 - User can approve and refine generated artifacts at any workflow stage before progression
-- User can hand off a workflow stage to another team member
-- User can pause a workflow and resume it later from any machine (`zen-pause`, `zen-resume`)
+- User can hand off a workflow stage to another team member *(requires API adapter)*
+- User can pause a workflow and resume it later from any machine (`zen-pause`, `zen-resume`) *(cross-machine requires API adapter)*
 - User can manually trigger a PR check on demand (`zen-pr-check`)
 - User can register a background PR monitor that periodically checks active PRs (`zen-pr-monitor`)
 
@@ -46,9 +46,9 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 |---|---|---|
 | **Commands / Workflows** | Slash commands, skill entry points, multi-step orchestration, stage transitions, handoff logic, approval/refinement prompts | Artifact generation, external API calls |
 | **Planning Core** | Generation of plans, technical designs, diagrams, and story implementation plans | Workflow state, external services, user interaction |
-| **State Store** | Reading/writing workflow state to the `zenflow-state` orphan branch on the working repo, organized in `{story-id}/` subfolders — `state.json`, `plan.md`, `status.md`, and `slices/` per story | Business logic, artifact generation, orchestration |
+| **State Store** | Adapter interface for reading/writing workflow state. `zenflow-store-state.sh` sources the configured adapter (`ZENFLOW_STATE_ADAPTER`). Local adapter (default): writes to `~/.zenflow/{story-id}/` — `state.json`, `plan.md`, `status.md`, and `slices/` per item. API adapter (future): HTTP calls to a DynamoDB+S3 service. | Business logic, artifact generation, orchestration |
 | **issue-tracker-adapter** | All Jira operations via `jira-cli` (primary) + Jira REST API (fallback) — fetch stories, move to In Progress | GitHub, Teams, workflow state, artifact generation |
-| **repo-adapter** | All GitHub operations — feature branches, PRs, PR comment handling, `zenflow-state` branch reads/writes | Jira, Teams, workflow logic, artifact generation |
+| **repo-adapter** | All GitHub operations — feature branches, PRs, PR comment handling | Jira, Teams, workflow logic, artifact generation, workflow state |
 | **notifier-adapter** | All Teams operations — notifications, approval messages (implementation TBD: webhook or Graph API) | Jira, GitHub, workflow state, artifact generation |
 | **PR Monitor** | Scheduled cron trigger, polling active PRs via State Store, detecting review comments and approvals, invoking `zen-story` on events, sending Teams notifications on approval | Workflow orchestration, artifact generation, PR operations beyond status checks |
 
@@ -95,7 +95,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 ## Core Journey — Story Implementation Workflow
 
 1. Developer runs `zen-story` with optional story ID
-2. `zen-story` calls `story-start` — fetches story from Jira via `jira-cli` (or prompts user to select from assigned non-closed stories), moves story to In Progress, initializes `{story-id}/state.json` on the `zenflow-state` orphan branch of the working repo
+2. `zen-story` calls `story-start` — fetches story from Jira via `jira-cli` (or prompts user to select from assigned non-closed stories), moves story to In Progress, initializes `{story-id}/state.json` via the State Store adapter
 3. `zen-story` calls `story-plan` — Planning Core generates a sliced implementation plan: asks clarifying questions if needed, confirms target PR branch (default: main), breaks work into ordered implementation slices, presents full plan for user approval
 4. User approves plan — `plan.md` (full plan with slice backlog), `status.md` (current slice tracker), `slices/` (per-slice detail), and updated `state.json` (with `current_slice: 1`) committed to state branch
 5. `zen-story` creates feature branch `zenflow/{story-id}-{concise-description}` via `gh` CLI
@@ -108,8 +108,8 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
     - PR approved → sends Teams notification to developer, marks workflow state complete in `state.json`
 
 **Pause/Resume:**
-- `zen-pause` — writes current stage to `state.json` on state branch, exits cleanly
-- `zen-resume {story-id}` — fetches state branch, reads `state.json`, re-invokes `zen-story` from last saved stage
+- `zen-pause` — writes current stage to `state.json` via State Store adapter, exits cleanly
+- `zen-resume {story-id}` — reads `state.json` via State Store adapter, re-invokes `zen-story` from last saved stage *(cross-machine resume requires API adapter)*
 - `zen-story {story-id}` on existing state — prompts: "State found — run `zen-resume` to continue or `zen-reset` to start fresh"
 
 ---
@@ -142,7 +142,8 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 **Notes:**
 - Stage commands are pure leaves — they never call each other
 - `zen-story` is the only orchestrator of stage commands
-- `repo-adapter` owns all GitHub operations including `zenflow-state` branch reads/writes
+- `repo-adapter` owns all GitHub operations (feature branches, PRs) — it does not own state persistence
+- State Store owns all state persistence via the configured adapter (`ZENFLOW_STATE_ADAPTER`). Local adapter (default): `~/.zenflow/{story-id}/`. API adapter (future): HTTP calls to DynamoDB+S3 service.
 - API credentials stored in `~/.claude/settings.json` env section
 - `jira-cli` is primary for issue-tracker-adapter operations, REST API is fallback
 
@@ -152,7 +153,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 
 | Priority | Journey | Depends On | Modules | Notes |
 |----------|---------|------------|---------|-------|
-| 1 | [Foundation: `zenflow-state` repo setup](slices/01-foundation-state-repo.slice.md) | — | State Store | Single orphan branch on working repo, Jira/Teams credentials in `~/.claude/settings.json` |
+| 1 | [Foundation: State Store setup](slices/01-foundation-state-repo.slice.md) | — | State Store | Adapter-pattern State Store — local filesystem adapter (`~/.zenflow/`) as default; Jira/Teams credentials in `~/.claude/settings.json` |
 | 2 | [`story-start` with mocked Jira](slices/02-story-start-mocked.slice.md) | Slice 1 | Commands / Workflows, State Store | Mocked story fetch, state branch init |
 | 3 | [`story-plan` with mocked Planning Core](slices/03-story-plan-mocked.slice.md) | Slice 2 | Commands / Workflows, Planning Core, State Store | Mocked plan generation, real approval flow |
 | 4 | [`story-implement` with mocked Planning Core + Teams](slices/04-story-implement-mocked.slice.md) | Slice 3 | Commands / Workflows, Planning Core, State Store | Mocked implementation, real quality/test invocation |
@@ -163,7 +164,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 | 9 | [Real repo-adapter in isolation](slices/09-github-integration.slice.md) | Slice 5 | repo-adapter, Planning Core, State Store | `gh` CLI setup, branch creation, PR creation, PR description — tested standalone |
 | 10 | [Integrate real adapters into stage commands one at a time](slices/10-adapter-integration.slice.md) | Slices 6-9 | Commands / Workflows, all Adapters | `story-start` → `story-plan` → `story-implement` → `story-create-pr` each validated with real tools |
 | 11 | [Full `zen-story` end-to-end with real adapters](slices/11-zen-story-e2e.slice.md) | Slice 10 | Commands / Workflows, all Adapters, State Store | Full workflow validated against real Jira, GitHub, Teams |
-| 12 | [State Persistence: `zen-pause` + `zen-resume`](slices/12-state-persistence.slice.md) | Slice 11 | State Store, Commands / Workflows, gh CLI | Cross-machine resume via state branch |
+| 12 | [State Persistence: `zen-pause` + `zen-resume`](slices/12-state-persistence.slice.md) | Slice 11 | State Store, Commands / Workflows, gh CLI | Local resume via `~/.zenflow/`; cross-machine resume deferred to API adapter |
 | 13 | [PR Monitor: `zen-pr-monitor` cron + `zen-pr-check`](slices/13-pr-monitor.slice.md) | Slice 11 | PR Monitor, gh CLI, State Store, Teams Adapter | Polls active PRs, re-invokes `zen-story` on events |
 | 14 | [Handoff: pass workflow to another team member](slices/14-handoff.slice.md) | Slice 13 | Commands / Workflows, notifier-adapter, State Store | Teams notification + state branch ownership transfer |
 | 15 | [`zen-reset`: reset workflow state](slices/15-zen-reset.slice.md) | Slice 12 | State Store, Commands / Workflows | Deferred — low priority |

@@ -1,16 +1,21 @@
 ---
-name: diffusion-planner
+name: zen-tool-plan
 description: >
-  Plans software projects using a diffusion methodology — refining from blurry
-  global shape to implementation detail in discrete passes. Use when planning
-  any new tool, CLI, service, plugin, or feature from scratch.
-argument-hint: "[project or feature name]"
+  Plans a new tool, CLI, service, or plugin using a diffusion methodology —
+  refining from blurry global shape to implementation detail in discrete passes.
+  Produces PLAN.md, STATUS.md, and slice files. See docs/zen-planning-methodology.md.
+argument-hint: "[tool or feature name]"
 disable-model-invocation: true
 ---
 
-# Diffusion Planner
+# Zen Tool Plan
 
-A planning methodology that mirrors how diffusion models denoise images —
+Plans a new tool, CLI, service, or plugin using the zen planning methodology.
+Produces `PLAN.md`, `STATUS.md`, and `slices/{NN}-{slug}.slice.md` files under
+`docs/plans/{plan-name}/`. See [docs/zen-planning-methodology.md](../../docs/zen-planning-methodology.md)
+for shared principles and artifact structure.
+
+A planning approach that mirrors how diffusion models denoise images —
 starting from a blurry global signal and progressively refining toward crisp
 detail, pass by pass, without committing to fine structure before the coarse
 shape is confirmed.
@@ -147,6 +152,20 @@ operations before planning a custom module. If one exists, a thin wrapper is
 less code, better maintained, and already handles auth. Surface this tradeoff
 explicitly — the answer can collapse a module entirely.
 
+**Access probe**: For any module that reads from or writes to an external
+system (repo, API, database, file store), ask: *"Who needs access to this,
+and do they have it in the target environment?"* Access assumptions that go
+unquestioned here become architecture rewrites during implementation.
+
+**Command scope probe**: For every user-facing command, establish when it is
+run: one-time on install, once per project, or on every invocation. A command
+whose scope is ambiguous will be built for the wrong context.
+
+**Data ownership vs. transport ownership**: When one module owns a data schema
+and another module owns the system where that data lives, declare explicitly
+which module executes the read/write. Leaving this implicit causes boundary
+confusion when the storage mechanism changes.
+
 **Rules:**
 - Think in terms of *responsibility*, not implementation.
 - A module should be describable in one sentence: "X owns Y and knows nothing
@@ -190,9 +209,11 @@ before any code is written.
 3. Check: does the story flow naturally? Does any step feel forced or awkward?
 
 **State persistence probe**: For any workflow that spans multiple steps or
-sessions, ask how state is persisted and whether it needs to be shared across
-machines or users. This question often surfaces new modules or changes existing
-boundaries. Ask it before the journey is approved, not after.
+sessions, ask how state is persisted, whether it needs to be shared across
+machines or users, and who controls the storage location — do all users of
+this tool have the necessary access permissions? This question often surfaces
+new modules or changes existing boundaries. Ask it before the journey is
+approved, not after.
 
 **Command naming**: If the project has a CLI or command surface, establish the
 naming convention during the journey narrative — not in Pass 5. Naming
@@ -499,6 +520,15 @@ This folder becomes the project's plan and should be referenced from `CLAUDE.md`
 - **One Pass 5 at a time.** Never produce implementation detail for more than
   one slice in a single session, even if asked. Future slices will change based
   on what earlier slices reveal. Stub files are fine — full detail is not.
+
+- **Audit before locking.** After Pass 3 and again after Pass 4, suggest
+  running `/zen-tool-plan-audit` to surface assumptions that could require
+  rework. This is especially important before beginning implementation.
+
+- **Amend don't patch.** If a finding during implementation invalidates part
+  of the plan, do not patch just the code or just one doc. Run
+  `/zen-tool-plan-amend` to propagate the change consistently across all plan
+  artifacts before continuing.
 
 ---
 

@@ -46,13 +46,13 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 |---|---|---|
 | **Commands / Workflows** | Slash commands, skill entry points, multi-step orchestration, stage transitions, handoff logic, approval/refinement prompts | Artifact generation, external API calls |
 | **Planning Core** | Generation of plans, technical designs, diagrams, and story implementation plans | Workflow state, external services, user interaction |
-| **State Store** | Reading/writing workflow state to `zenflow-state` repo branches (`{project-key}/{story-id}`), `state.json`, `plan.md`, `status.md`, and `slices/` per branch | Business logic, artifact generation, orchestration |
+| **State Store** | Reading/writing workflow state to the `zenflow-state` orphan branch on the working repo, organized in `{story-id}/` subfolders — `state.json`, `plan.md`, `status.md`, and `slices/` per story | Business logic, artifact generation, orchestration |
 | **issue-tracker-adapter** | All Jira operations via `jira-cli` (primary) + Jira REST API (fallback) — fetch stories, move to In Progress | GitHub, Teams, workflow state, artifact generation |
-| **repo-adapter** | All GitHub operations — feature branches, PRs, PR comment handling, `zenflow-state` repo reads/writes | Jira, Teams, workflow logic, artifact generation |
+| **repo-adapter** | All GitHub operations — feature branches, PRs, PR comment handling, `zenflow-state` branch reads/writes | Jira, Teams, workflow logic, artifact generation |
 | **notifier-adapter** | All Teams operations — notifications, approval messages (implementation TBD: webhook or Graph API) | Jira, GitHub, workflow state, artifact generation |
-| **PR Monitor** | Scheduled cron trigger, polling active PRs in `zenflow-state`, detecting review comments and approvals, invoking `zen-story` on events, sending Teams notifications on approval | Workflow orchestration, artifact generation, PR operations beyond status checks |
+| **PR Monitor** | Scheduled cron trigger, polling active PRs via State Store, detecting review comments and approvals, invoking `zen-story` on events, sending Teams notifications on approval | Workflow orchestration, artifact generation, PR operations beyond status checks |
 
-**API credentials** live in `.claude/settings.json` env section — not a module.
+**API credentials** live in `~/.claude/settings.json` env section — not a module.
 
 **Capability assignments:**
 
@@ -95,7 +95,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 ## Core Journey — Story Implementation Workflow
 
 1. Developer runs `zen-story` with optional story ID
-2. `zen-story` calls `story-start` — fetches story from Jira via `jira-cli` (or prompts user to select from assigned non-closed stories), moves story to In Progress, initializes `state.json` on `zenflow-state/{project-key}/{story-id}` branch
+2. `zen-story` calls `story-start` — fetches story from Jira via `jira-cli` (or prompts user to select from assigned non-closed stories), moves story to In Progress, initializes `{story-id}/state.json` on the `zenflow-state` orphan branch of the working repo
 3. `zen-story` calls `story-plan` — Planning Core generates a sliced implementation plan: asks clarifying questions if needed, confirms target PR branch (default: main), breaks work into ordered implementation slices, presents full plan for user approval
 4. User approves plan — `plan.md` (full plan with slice backlog), `status.md` (current slice tracker), `slices/` (per-slice detail), and updated `state.json` (with `current_slice: 1`) committed to state branch
 5. `zen-story` creates feature branch `zenflow/{story-id}-{concise-description}` via `gh` CLI
@@ -126,7 +126,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 | `zen-story` | PR Monitor | workflow state handoff after PR creation |
 | `zen-resume` | `zen-story` | stage + context from State Store |
 | `story-start` | `issue-tracker-adapter` | story ID or assigned story fetch |
-| `story-start` | State Store | initialize state branch |
+| `story-start` | State Store | initialize story state |
 | `story-plan` | Planning Core | story context + clarifying Q&A → sliced plan |
 | `story-plan` | State Store | write `plan.md`, `status.md`, `slices/`, updated `state.json` (`current_slice: 1`) |
 | `story-implement` | Planning Core | current slice from `status.md` via State Store |
@@ -142,8 +142,8 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 **Notes:**
 - Stage commands are pure leaves — they never call each other
 - `zen-story` is the only orchestrator of stage commands
-- `repo-adapter` owns all GitHub operations including `zenflow-state` repo reads/writes
-- API credentials stored in `.claude/settings.json` env section
+- `repo-adapter` owns all GitHub operations including `zenflow-state` branch reads/writes
+- API credentials stored in `~/.claude/settings.json` env section
 - `jira-cli` is primary for issue-tracker-adapter operations, REST API is fallback
 
 ---
@@ -152,7 +152,7 @@ Zenflow eliminates the overhead that slows down the software development lifecyc
 
 | Priority | Journey | Depends On | Modules | Notes |
 |----------|---------|------------|---------|-------|
-| 1 | [Foundation: `zenflow-state` repo setup](slices/01-foundation-state-repo.slice.md) | — | State Store | State repo init, credentials in `settings.json` |
+| 1 | [Foundation: `zenflow-state` repo setup](slices/01-foundation-state-repo.slice.md) | — | State Store | Single orphan branch on working repo, Jira/Teams credentials in `~/.claude/settings.json` |
 | 2 | [`story-start` with mocked Jira](slices/02-story-start-mocked.slice.md) | Slice 1 | Commands / Workflows, State Store | Mocked story fetch, state branch init |
 | 3 | [`story-plan` with mocked Planning Core](slices/03-story-plan-mocked.slice.md) | Slice 2 | Commands / Workflows, Planning Core, State Store | Mocked plan generation, real approval flow |
 | 4 | [`story-implement` with mocked Planning Core + Teams](slices/04-story-implement-mocked.slice.md) | Slice 3 | Commands / Workflows, Planning Core, State Store | Mocked implementation, real quality/test invocation |

@@ -51,7 +51,7 @@ Story → Plan → Implementation → PR → Merge
 ## Core Journey — Story Implementation
 
 1. Developer runs `zen-story` with optional story ID
-2. Fetches story from Jira, moves to In Progress, initializes state in `zenflow-state` repo
+2. Fetches story from Jira, moves to In Progress, initializes state in the `zenflow-state` orphan branch of the working repo
 3. Planning Core generates implementation plan with clarifying Q&A — user approves before proceeding
 4. Feature branch created: `zenflow/{story-id}-{concise-description}`
 5. Approved plan executed — Teams notification sent if mid-implementation input needed
@@ -91,17 +91,17 @@ claude plugin install ./zenflow
 ## Setup
 
 ```bash
-# Configure credentials and state repo
+# Configure credentials (one-time, not per project)
 /zen-setup
 ```
 
 Zenflow requires:
-- `ZENFLOW_STATE_REPO` — a GitHub repo used to persist workflow state across sessions and machines
-- Jira credentials (via `jira-cli` config) — used by `issue-tracker-adapter`
+- Jira credentials (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`) — used by `issue-tracker-adapter`
 - GitHub credentials (via `gh auth login`) — used by `repo-adapter`
-- Microsoft Teams webhook URL — used by `notifier-adapter`
+- Microsoft Teams webhook URL (`TEAMS_WEBHOOK_URL`) — used by `notifier-adapter`
 
-Credentials are stored in `.claude/settings.json` env section — never committed.
+Credentials are stored in `~/.claude/settings.json` env section — never committed.
+Workflow state is stored on a `zenflow-state` orphan branch of the working repo — no separate state repo needed.
 
 ---
 
@@ -110,17 +110,23 @@ Credentials are stored in `.claude/settings.json` env section — never committe
 ```
 zenflow/
 ├── skills/
-│   ├── zen-setup/                  # One-time setup wizard (user-facing)
-│   ├── diffusion-planner/          # Pass-based planning methodology
+│   ├── zen-setup/                  # One-time credential setup wizard
+│   ├── zen-tool-plan/              # Plan a new tool from scratch (diffusion methodology)
+│   ├── zen-tool-plan-audit/        # Audit a tool plan for risks and assumptions
+│   ├── zen-tool-plan-amend/        # Propagate plan changes consistently across all artifacts
 │   ├── commands/                   # zen-story, zen-resume, zen-pause, zen-pr-check
 │   ├── planning-core/              # Plan, design doc, diagram, and PR description generation
-│   ├── state-store/                # zenflow-state repo reads/writes (state.json, plan.md)
 │   ├── issue-tracker-adapter/      # Story/epic operations (currently: jira-cli + REST API)
-│   ├── repo-adapter/               # Branch, PR, repo operations (currently: gh CLI)
+│   ├── repo-adapter/               # Branch, PR, and zenflow-state branch operations (gh CLI)
 │   ├── notifier-adapter/           # Notifications and approvals (currently: Teams webhook)
 │   └── pr-monitor/                 # Cron-triggered PR polling and event dispatch
+├── scripts/
+│   ├── zenflow-store-state.sh      # State Store functions (sourced by skills, never run directly)
+│   └── claude-set-env.sh           # Write env vars to ~/.claude/settings.json
 ├── hooks/                          # Hook definitions (zen-pr-monitor cron trigger)
 ├── docs/
+│   ├── zen-planning-methodology.md # Shared planning principles and artifact structure
+│   ├── state-schema.md             # state.json schema and required env vars
 │   └── plans/
 │       └── zen-story/
 │           ├── PLAN.md             # Full project plan and journey backlog

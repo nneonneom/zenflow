@@ -165,7 +165,7 @@ Each command is a cycle. Each cycle is a refinement. Each release is an ascensio
 
 ## Status
 
-🌱 Early cultivation — active development. See [docs/plans/zen-story/STATUS.md](docs/plans/zen-story/STATUS.md) for current progress.
+🌱 Early cultivation — active development. See [docs/plans/zen-story-mvp-1/STATUS.md](docs/plans/zen-story-mvp-1/STATUS.md) for current progress.
 
 ---
 

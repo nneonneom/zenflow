@@ -32,6 +32,6 @@ See `docs/zen-planning-methodology.md` for shared planning principles and artifa
 
 ## Plans
 
-- **Zenflow — Story Workflow** — `docs/plans/zen-story/PLAN.md`
+- **Zenflow — Story Workflow** — `docs/plans/zen-story-mvp-1/PLAN.md`
   Full project plan: vision, capabilities, module map, core journey, interaction map, and journey backlog.
-  Build status and current slice: `docs/plans/zen-story/STATUS.md`
+  Build status and current slice: `docs/plans/zen-story-mvp-1/STATUS.md`

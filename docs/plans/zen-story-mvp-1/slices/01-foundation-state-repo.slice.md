@@ -30,7 +30,7 @@
 {
   "story_id": "PROJ-123",
   "project_key": "PROJ",
-  "stage": "story-start | story-plan | story-implement | story-create-pr | complete",
+  "stage": "planning | development | review | complete",
   "target_branch": "main",
   "feature_branch": "zenflow/PROJ-123-concise-description",
   "pr_url": null,

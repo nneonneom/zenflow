@@ -27,7 +27,7 @@ state_init() {
 {
   "story_id": "${story_id}",
   "project_key": "${project_key}",
-  "stage": "story-start",
+  "stage": "planning",
   "target_branch": "main",
   "feature_branch": null,
   "pr_url": null,
@@ -48,7 +48,7 @@ state_read() {
 }
 
 # Merges a JSON patch into state.json.
-# json_patch example: '{"stage":"story-plan","feature_branch":"zenflow/PROJ-123-add-login"}'
+# json_patch example: '{"stage":"development","feature_branch":"zenflow/PROJ-123-add-login"}'
 state_write() {
   local story_id="$1" json_patch="$2"
   local now state_file updated

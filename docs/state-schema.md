@@ -51,7 +51,7 @@ Structured state (`state.json`) goes to DynamoDB; documents (`plan.md`,
 {
   "story_id":      "PROJ-123",
   "project_key":   "PROJ",
-  "stage":         "story-start | story-plan | story-implement | story-create-pr | complete",
+  "stage":         "planning | development | review | complete",
   "target_branch": "main",
   "feature_branch": "zenflow/PROJ-123-concise-description",
   "pr_url":        null,
@@ -83,10 +83,9 @@ Structured state (`state.json`) goes to DynamoDB; documents (`plan.md`,
 
 | Value | Meaning |
 |---|---|
-| `story-start` | Initial state — story fetched, state initialized |
-| `story-plan` | Implementation plan being generated or awaiting approval |
-| `story-implement` | Active implementation — slices being executed |
-| `story-create-pr` | PR creation in progress |
+| `planning` | Story fetched and state initialized; implementation plan being generated or awaiting approval (`approved_plan` is the sub-state discriminator) |
+| `development` | Active implementation — slices being executed |
+| `review` | PR open and under review; may cycle back to `development` when review comments are addressed |
 | `complete` | PR approved, workflow finished |
 
 ---

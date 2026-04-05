@@ -68,23 +68,25 @@ Story → Plan → Implementation → PR → Merge
 | Command | Description |
 |---|---|
 | `zen-story` | Main orchestrator — start or continue a story workflow |
-| `zen-resume {story-id}` | Resume a paused workflow from any machine |
-| `zen-pause` | Pause the current workflow and save state |
-| `zen-pr-check {story-id}` | Manually trigger a PR status check |
+| `zen-resume {story-id}` | Resume a paused workflow |
+| `zen-pause` | Checkpoint the current workflow and print resume instructions |
+| `zen-pr-check {story-id}` | Manually check PR status and address review comments |
 | `zen-pr-monitor` | Scheduled cron — polls active PRs, fires on review events |
+| `zen-handoff {story-id}` | Pass workflow ownership to another team member |
+| `zen-reset {story-id}` | Delete local workflow state and start fresh |
+| `zen-epic` | Orchestrate the full epic lifecycle (plan → design → stories) |
+| `zen-setup` | One-time credential setup (Jira, GitHub, Teams) |
 
 ---
 
 ## Installation
 
 ```bash
-# Install via Claude Code plugin registry (coming soon)
-claude plugin install zenflow
-
-# Or clone and install locally
 git clone https://github.com/yourusername/zenflow
-claude plugin install ./zenflow
 ```
+
+Add the repo path to your Claude Code skills configuration so the skills are
+available in any session. Run `/zen-setup` once to configure credentials.
 
 ---
 
@@ -110,31 +112,44 @@ Workflow state is stored in `~/.zenflow/` by default (local adapter). Set `ZENFL
 ```
 zenflow/
 ├── skills/
+│   ├── zen-story/                  # Main orchestrator
+│   ├── story-start/                # Stage command — fetch story, init state
+│   ├── story-plan/                 # Stage command — generate plan, user approval
+│   ├── story-implement/            # Stage command — execute slices, update state
+│   ├── story-create-pr/            # Stage command — generate PR description, create PR
+│   ├── zen-pause/                  # Checkpoint workflow, print resume instructions
+│   ├── zen-resume/                 # Resume workflow from saved state
+│   ├── zen-pr-monitor/             # Scheduled cron — poll active PRs, react to events
+│   ├── zen-pr-check/               # Manual PR status check
+│   ├── zen-handoff/                # Pass workflow ownership to another team member
+│   ├── zen-reset/                  # Delete local workflow state
+│   ├── zen-epic/                   # Epic lifecycle orchestrator
+│   ├── planning-core/              # Plan, design doc, and PR description generation
 │   ├── zen-setup/                  # One-time credential setup wizard
 │   ├── zen-tool-plan/              # Plan a new tool from scratch (diffusion methodology)
-│   ├── zen-tool-plan-audit/        # Audit a tool plan for risks and assumptions
-│   ├── zen-tool-plan-amend/        # Propagate plan changes consistently across all artifacts
-│   ├── commands/                   # zen-story, zen-resume, zen-pause, zen-pr-check
-│   ├── planning-core/              # Plan, design doc, diagram, and PR description generation
-│   ├── issue-tracker-adapter/      # Story/epic operations (currently: jira-cli + REST API)
-│   ├── repo-adapter/               # Branch and PR operations (gh CLI)
-│   ├── notifier-adapter/           # Notifications and approvals (currently: Teams webhook)
-│   └── pr-monitor/                 # Cron-triggered PR polling and event dispatch
+│   ├── zen-tool-plan-audit/        # Audit a plan for risks and assumptions
+│   └── zen-tool-plan-amend/        # Propagate plan changes across all artifacts
 ├── scripts/
-│   ├── zenflow-store-state.sh      # State Store adapter router (sourced by skills, never run directly)
+│   ├── zenflow-store-state.sh      # State Store adapter router (source this, never run directly)
 │   ├── state-adapter-local.sh      # Local filesystem adapter (~/.zenflow/)
 │   ├── state-adapter-api.sh        # API adapter stub (DynamoDB+S3 — not yet implemented)
+│   ├── issue-tracker-adapter.sh    # Jira operations (jira-cli + REST API fallback)
+│   ├── repo-adapter.sh             # GitHub operations (gh CLI)
+│   ├── notifier-adapter.sh         # Teams webhook notifications
+│   ├── mock-jira-story.sh          # Mock Jira fetch (Slice 2 — replaced in Slice 10)
+│   ├── mock-planning-core.sh       # Mock plan generation (Slice 3 — replaced in Slice 10)
+│   ├── mock-teams-notifier.sh      # Mock Teams notifications (Slice 4 — replaced in Slice 10)
+│   ├── mock-repo-adapter.sh        # Mock branch/PR creation (Slice 5 — replaced in Slice 10)
 │   └── claude-set-env.sh           # Write env vars to ~/.claude/settings.json
-├── hooks/                          # Hook definitions (zen-pr-monitor cron trigger)
 ├── docs/
 │   ├── zen-planning-methodology.md # Shared planning principles and artifact structure
 │   ├── state-schema.md             # state.json schema and required env vars
 │   └── plans/
-│       └── zen-story/
+│       └── zen-story-mvp-1/
 │           ├── PLAN.md             # Full project plan and journey backlog
 │           ├── STATUS.md           # Current slice and build progress
-│           └── slices/             # Per-slice implementation plans
-├── CLAUDE.md                       # Plugin context for Claude Code
+│           └── slices/             # Per-slice implementation plans (01–16)
+├── CLAUDE.md                       # Claude Code context and skill index
 └── README.md
 ```
 
